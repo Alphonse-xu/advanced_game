@@ -1,4 +1,4 @@
-#include "PhysicsSystem.h"
+﻿#include "PhysicsSystem.h"
 #include "PhysicsObject.h"
 #include "GameObject.h"
 #include "CollisionDetection.h"
@@ -44,7 +44,7 @@ void PhysicsSystem::Clear() {
 /*
 
 This is the core of the physics engine update
-
+调用IntegrateAccel和IntegrateVelocity方法
 */
 void PhysicsSystem::Update(float dt) {
 	GameTimer testTimer;
@@ -159,7 +159,32 @@ a particular pair will only be added once, so objects colliding for
 multiple frames won't flood the set with duplicates.
 */
 void PhysicsSystem::BasicCollisionDetection() {
-
+	std::vector < GameObject* >::const_iterator first;
+	std::vector < GameObject* >::const_iterator last;
+	gameWorld.GetObjectIterators(first, last);
+	
+		for (auto i = first; i != last; ++i) {
+		if ((*i)->GetPhysicsObject() == nullptr) {
+			continue;
+			
+		}
+		for (auto j = i + 1; j != last; ++j) {
+			if ((*j)->GetPhysicsObject() == nullptr) {
+				continue;
+				
+			}
+			CollisionDetection::CollisionInfo info;
+			if (CollisionDetection::ObjectIntersection(*i, *j, info)) {
+				 std::cout << " Collision between " << (*i)->GetName()
+					 << " and " << (*j)->GetName() << std::endl;
+				info.framesLeft = numCollisionFrames;
+				allCollisions.insert(info);
+				
+			}
+			
+		}
+		
+	}
 }
 
 /*
@@ -204,7 +229,42 @@ based on any forces that have been accumulated in the objects during
 the course of the previous game frame.
 */
 void PhysicsSystem::IntegrateAccel(float dt) {
+	std::vector < GameObject* >::const_iterator first;
+	std::vector < GameObject* >::const_iterator last;
+	gameWorld.GetObjectIterators(first, last);
+	
+		for (auto i = first; i != last; ++i) {
+		PhysicsObject * object = (*i)->GetPhysicsObject(); //遍历每个GameObject，如果它具有PhysicsObject
+		if (object == nullptr) {
+			continue; // No physics object for this GameObject !
+			
+		}
+		float inverseMass = object->GetInverseMass();
+		
+		Vector3 linearVel = object->GetLinearVelocity();
+		Vector3 force = object->GetForce();
+		Vector3 accel = force * inverseMass; //加速度
+		//重力
+			if (applyGravity && inverseMass > 0) {
+			accel += gravity; // don 't move infinitely heavy things
+			
+		}
+			linearVel += accel * dt; // integrate accel !
+		object->SetLinearVelocity(linearVel);
 
+		// Angular stuff
+		Vector3 torque = object->GetTorque();
+		Vector3 angVel = object->GetAngularVelocity();
+		
+			object->UpdateInertiaTensor(); // update tensor vs orientation
+		
+			Vector3 angAccel = object->GetInertiaTensor() * torque; //对象的惯性张量来转换加速度
+		
+			angVel += angAccel * dt; // integrate angular accel !
+		object->SetAngularVelocity(angVel);
+		
+		
+	}
 }
 /*
 This function integrates linear and angular velocity into
@@ -213,7 +273,41 @@ throughout a physics update, to slowly move the objects through
 the world, looking for collisions.
 */
 void PhysicsSystem::IntegrateVelocity(float dt) {
+	std::vector < GameObject* >::const_iterator first;
+	std::vector < GameObject* >::const_iterator last;
+	gameWorld.GetObjectIterators(first, last);
+	float dampingFactor = 1.0f - 0.95f;
+	float frameDamping = powf(dampingFactor, dt);
+	
+		for (auto i = first; i != last; ++i) {
+		PhysicsObject * object = (*i)->GetPhysicsObject();
+		if (object == nullptr) {
+			continue;
+			
+		}
+		Transform & transform = (*i)->GetTransform();
+		// Position Stuff
+			Vector3 position = transform.GetLocalPosition();
+		Vector3 linearVel = object->GetLinearVelocity();
+		position += linearVel * dt; //获取速度
+		transform.SetLocalPosition(position);
+		// Linear Damping
+			linearVel = linearVel * frameDamping;
+		object->SetLinearVelocity(linearVel);
 
+		// Orientation Stuff
+		Quaternion orientation = transform.GetLocalOrientation();
+		Vector3 angVel = object->GetAngularVelocity();
+		
+		orientation = orientation +(Quaternion(angVel * dt * 0.5f, 0.0f) * orientation);
+		orientation.Normalise();
+		
+			transform.SetLocalOrientation(orientation);
+		
+			// Damp the angular velocity too
+			angVel = angVel * frameDamping; //阻尼
+		object->SetAngularVelocity(angVel);
+	}
 }
 
 /*

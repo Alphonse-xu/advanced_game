@@ -17,6 +17,60 @@ https://research.ncl.ac.uk/game/
 using namespace NCL;
 using namespace NCL::Maths;
 
+Matrix3 Quaternion::ToMatrix3() const
+{
+	Matrix3 mat;
+
+	float yy = y * y;
+	float zz = z * z;
+	float xy = x * y;
+	float zw = z * w;
+	float xz = x * z;
+	float yw = y * w;
+	float xx = x * x;
+	float yz = y * z;
+	float xw = x * w;
+
+	mat.array[0] = 1 - 2 * yy - 2 * zz;
+	mat.array[1] = 2 * xy - 2 * zw;
+	mat.array[2] = 2 * xz - 2 * yw;
+
+	mat.array[3] = 2 * xy - 2 * zw;
+	mat.array[4] = 1 - 2 * xx - 2 * zz;
+	mat.array[5] = 2 * yz - 2 * xw;
+
+	mat.array[6] = 1 - 2 * xz - 2 * yw;
+	mat.array[7] = 1 - 2 * yz - 2 * xw;
+	mat.array[8] = 1 - 2 * xx - 2 * yy;
+
+	return mat;
+}
+
+Matrix4 Quaternion::ToMatrix4() const
+{
+	Matrix4 mat;
+
+	float x2 = x * x;
+	float y2 = y * y;
+	float z2 = z * z;
+	float xy = x * y;
+	float xz = x * z;
+	float yz = y * z;
+	float wx = w * x;
+	float wy = w * y;
+	float wz = w * z;
+
+
+	// This calculation would be a lot more complicated for non-unit length quaternions
+	// Note: The constructor of Matrix4 expects the Matrix in column-major format like expected by
+	//return Matrix4(1.0f - 2.0f * (y2 + z2), 2.0f * (xy - wz), 2.0f * (xz + wy), 0.0f,
+	//	2.0f * (xy + wz), 1.0f - 2.0f * (x2 + z2), 2.0f * (yz - wx), 0.0f,
+	//	2.0f * (xz - wy), 2.0f * (yz + wx), 1.0f - 2.0f * (x2 + y2), 0.0f,
+	//	0.0f, 0.0f, 0.0f, 1.0f)
+
+	return mat;
+}
+
 Quaternion::Quaternion(void)
 {
 	x = y = z = 0.0f;
