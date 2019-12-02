@@ -1,4 +1,4 @@
-#include "PhysicsObject.h"
+﻿#include "PhysicsObject.h"
 #include "PhysicsSystem.h"
 #include "../CSC8503Common/Transform.h"
 using namespace NCL;
@@ -17,6 +17,7 @@ PhysicsObject::~PhysicsObject()	{
 
 }
 
+//通过适当的逆质量表示来缩放其输入，并将其添加到适当的速度向量
 void PhysicsObject::ApplyAngularImpulse(const Vector3& force) {
 	if (force.Length() > 0) {
 		bool a = true;

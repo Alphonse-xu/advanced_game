@@ -205,8 +205,8 @@ bool CollisionDetection::AABBIntersection(const AABBVolume& volumeA, const Trans
 		static const Vector3 faces[6] =
 		{
 		Vector3(-1, 0, 0), Vector3(1, 0, 0),
-			 Vector3(0, -1, 0), Vector3(0, 1, 0),
-			 Vector3(0, 0, -1), Vector3(0, 0, 1),
+		Vector3(0, -1, 0), Vector3(0, 1, 0),
+		Vector3(0, 0, -1), Vector3(0, 0, 1),
 		};
 
 
@@ -238,26 +238,7 @@ bool CollisionDetection::AABBIntersection(const AABBVolume& volumeA, const Trans
 			}
 		}
 
-
-		Vector3 closestPointOnBoxA = Maths::Clamp(boxBPos, minA, maxA);
-		Vector3 closestPointOnBoxB = Maths::Clamp(boxAPos, minB, maxB);
-
-		Vector3 aDir = (boxAPos - closestPointOnBoxB).Normalised();
-		Vector3 bDir = (boxBPos - closestPointOnBoxA).Normalised();
-
-		float aDot = Vector3::Dot(aDir, axis);
-		float bDot = Vector3::Dot(bDir, axis);
-
-		if (abs(aDot) > abs(bDot)) {
-			collisionInfo.AddContactPoint(
-				closestPointOnBoxB, axis, penetration);
-		}
-		else {
-			collisionInfo.AddContactPoint(
-
-			closestPointOnBoxA, axis, penetration);
-
-		}
+		collisionInfo.AddContactPoint(Vector3(), Vector3(), axis, penetration);
 		return true;
 	}
 		return false;
@@ -275,9 +256,10 @@ bool CollisionDetection::SphereIntersection(const SphereVolume& volumeA, const T
 	if (deltaLength < radii) {
 		float penetration = (radii - deltaLength);
 		Vector3 normal = delta.Normalised();
-		Vector3 collisionPoint = collisionPoint =worldTransformA.GetWorldPosition() + (normal * (volumeA.GetRadius() - (penetration * 0.5f)));
+		Vector3 localA = normal * volumeA.GetRadius();
+		Vector3 localB = -normal * volumeB.GetRadius();
 		
-		collisionInfo.AddContactPoint(collisionPoint, normal,penetration);
+		collisionInfo.AddContactPoint(localA, localB, normal,penetration);
 
 		return true;// we 're colliding !
 	}
@@ -297,10 +279,16 @@ bool CollisionDetection::AABBSphereIntersection(const AABBVolume& volumeA, const
 	float distance = (localPoint).Length();
 	
 	if (distance < volumeB.GetRadius()) {// yes , we 're colliding !
-		collisionInfo.AddContactPoint(
-			closestPointOnBox,
-			distance == 0.0f ? delta.Normalised() : localPoint.Normalised(),(volumeB.GetRadius() - distance)); //碰撞法线，我们可以使用从框位置到球体的方向向量最近点
+		Vector3 collisionNormal = localPoint.Normalised();
+		float penetration = (volumeB.GetRadius() - distance);
+		
+		Vector3 localA = Vector3();
+		Vector3 localB = -collisionNormal * volumeB.GetRadius();
+		
+		collisionInfo.AddContactPoint(localA, localB,
+		collisionNormal, penetration);
 		return true;
+
 	}
 
 	return false;

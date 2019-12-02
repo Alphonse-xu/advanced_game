@@ -19,6 +19,8 @@ namespace NCL {
 	{
 	public:
 		struct ContactPoint {
+			Vector3 localA;
+			Vector3 localB;
 			Vector3 position;
 			Vector3 normal;
 			float	penetration;
@@ -30,8 +32,9 @@ namespace NCL {
 
 			ContactPoint point;
 
-			void AddContactPoint(Vector3 position, Vector3 normal, float p) {
-				point.position		= position;
+			void AddContactPoint(const Vector3& localA,const Vector3&localB,const Vector3& normal, float p) {
+				point.localA = localA;
+				point.localB = localB;
 				point.normal		= normal;
 				point.penetration	= p;
 			}
