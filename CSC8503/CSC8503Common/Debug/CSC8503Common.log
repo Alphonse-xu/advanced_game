@@ -1,6 +1,11 @@
-﻿  GameObject.cpp
+﻿  CollisionDetection.cpp
+  GameObject.cpp
   GameServer.cpp
   GameWorld.cpp
+  NetworkObject.cpp
   PhysicsObject.cpp
+  PhysicsSystem.cpp
+  PositionConstraint.cpp
   Generating Code...
+C:\Users\b8067791\source\repos\advance game\advanced_game\CSC8503\CSC8503Common\CollisionDetection.cpp(182): warning C4715: 'NCL::CollisionDetection::ObjectIntersection': not all control paths return a value
   CSC8503Common.vcxproj -> C:\Users\b8067791\source\repos\advance game\advanced_game\Win32\Debug\CSC8503Common.lib

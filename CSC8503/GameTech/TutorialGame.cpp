@@ -10,13 +10,18 @@
 using namespace NCL;
 using namespace CSC8503;
 
+TutorialGame* TutorialGame::This_TutorialGame = nullptr;
+
 TutorialGame::TutorialGame()	{
+	This_TutorialGame = this;
+
 	world		= new GameWorld();
 	renderer	= new GameTechRenderer(*world);
 	physics		= new PhysicsSystem(*world);
 
 	forceMagnitude	= 10.0f;
 	useGravity		= false;
+	useGoose		= false;
 	inSelectionMode = false;
 
 	Debug::SetRenderer(renderer);
@@ -63,6 +68,8 @@ TutorialGame::~TutorialGame()	{
 	delete physics;
 	delete renderer;
 	delete world;
+
+	delete PKmachine;
 }
 
 void TutorialGame::UpdateGame(float dt) {
@@ -84,6 +91,8 @@ void TutorialGame::UpdateGame(float dt) {
 
 	SelectObject();
 	MoveSelectedObject();
+	CanadaGooseMove();
+	PKmachine->Update(); // run the state machine !
 
 	world->UpdateWorld(dt);
 	renderer->Update(dt);
@@ -94,10 +103,16 @@ void TutorialGame::UpdateGame(float dt) {
 }
 
 void TutorialGame::UpdateKeys() {
+
 	if (Window::GetKeyboard()->KeyPressed(KeyboardKeys::F1)) {
 		InitWorld(); //We can reset the simulation at any time with F1
 		selectionObject = nullptr;
 	}
+	
+	if (Window::GetKeyboard()->KeyPressed(KeyboardKeys::F11)) {
+		useGoose = !useGoose;
+	}
+	
 
 	if (Window::GetKeyboard()->KeyPressed(KeyboardKeys::F2)) {
 		InitCamera(); //F2 will reset the camera to a specific default place
@@ -176,7 +191,7 @@ void  TutorialGame::LockedCameraMovement() {
 
 		world->GetMainCamera()->SetPosition(camPos);
 		world->GetMainCamera()->SetPitch(angles.x);
-		world->GetMainCamera()->SetYaw(angles.y);
+		world->GetMainCamera()->SetYaw(angles.y );
 	}
 }
 
@@ -251,8 +266,10 @@ bool TutorialGame::SelectObject() {
 			Ray ray = CollisionDetection::BuildRayFromMouse(*world->GetMainCamera());
 
 			RayCollision closestCollision;
+			
 			if (world->Raycast(ray, closestCollision, true)) {
 				selectionObject = (GameObject*)closestCollision.node;
+				selectionObject->SetCollisionPos(closestCollision.collidedAt);
 				selectionObject->GetRenderObject()->SetColour(Vector4(0, 1, 0, 1));
 				return true;
 			}
@@ -261,8 +278,14 @@ bool TutorialGame::SelectObject() {
 			}
 			
 		}
-			/*+ selectionObject->GetRenderObject()->GetMesh()->GetPositionData()*/
-			renderer->DrawString("The position :", Vector2(10, 60)); //显示选中物体位置和方向
+
+		if (selectionObject) { //要选中物体才能显示坐标
+			renderer->DrawString("click position:" + selectionObject->PrintCollisionPos(), Vector2(10, 60)); //显示选中物体位置和方向
+			string CosPos = "x = " + std::to_string(selectionObject->GetConstTransform().GetLocalPosition().x) + " y = " + std::to_string(selectionObject->GetConstTransform().GetLocalPosition().y) + "z = " + std::to_string(selectionObject->GetConstTransform().GetLocalPosition().z);
+			renderer->DrawString("object position:" + CosPos, Vector2(10, 80)); 
+
+		}
+
 		if (Window::GetKeyboard()->KeyPressed(NCL::KeyboardKeys::L)) {
 			if (selectionObject) {
 				if (lockedObject == selectionObject) {
@@ -324,13 +347,14 @@ void TutorialGame::InitWorld() {
 	physics->Clear();
 
 	InitMixedGridWorld(10, 10, 3.5f, 3.5f);
-	AddGooseToWorld(Vector3(30, 2, 0));
-	AddAppleToWorld(Vector3(35, 2, 0));
+	CanadaGoose = AddGooseToWorld(Vector3(30, 2, 0));
+	RedApple = AddAppleToWorld(Vector3(35, 2, 0));
 
-	AddParkKeeperToWorld(Vector3(40, 2, 0));
+	ParkKeeper = AddParkKeeperToWorld(Vector3(40, 2, 0));
 	AddCharacterToWorld(Vector3(45, 2, 0));
 
-	AddFloorToWorld(Vector3(0, -2, 0));
+	AddFloorToWorld(Vector3(0, -1, 0));
+	AddWaterToWorld(Vector3(0, -8, 0));
 }
 
 //From here on it's functions to add in objects to the world!
@@ -358,6 +382,27 @@ GameObject* TutorialGame::AddFloorToWorld(const Vector3& position) {
 	world->AddGameObject(floor);
 
 	return floor;
+}
+
+GameObject* TutorialGame::AddWaterToWorld(const Vector3& position) {
+	GameObject* water = new GameObject();
+
+	Vector3 waterSize = Vector3(100, 2, 100);
+	AABBVolume* volume = new AABBVolume(waterSize);
+	water->SetBoundingVolume((CollisionVolume*)volume);
+	water->GetTransform().SetWorldScale(waterSize);
+	water->GetTransform().SetWorldPosition(position);
+
+	water->SetRenderObject(new RenderObject(&water->GetTransform(), cubeMesh, nullptr, basicShader));
+	water->SetPhysicsObject(new PhysicsObject(&water->GetTransform(), water->GetBoundingVolume()));
+
+	water->GetPhysicsObject()->SetInverseMass(0);
+	water->GetPhysicsObject()->InitCubeInertia();
+	water->isWall = 1;
+	world->AddGameObject(water);
+	water->GetRenderObject()->SetColour(Vector4(0, 0.8, 1, 1));
+
+	return water;
 }
 
 /*
@@ -413,7 +458,7 @@ GameObject* TutorialGame::AddGooseToWorld(const Vector3& position)
 	float size			= 1.0f;
 	float inverseMass	= 1.0f;
 
-	GameObject* goose = new GameObject();
+	GameObject* goose = new GameObject("goose");
 
 
 	SphereVolume* volume = new SphereVolume(size);
@@ -430,7 +475,33 @@ GameObject* TutorialGame::AddGooseToWorld(const Vector3& position)
 
 	world->AddGameObject(goose);
 
+
 	return goose;
+}
+
+void TutorialGame::CanadaGooseMove() {
+	if (useGoose) {
+
+		Ray GooseRay(CanadaGoose->GetTransform().GetWorldPosition(), (CanadaGoose->GetTransform().GetLocalOrientation() * Vector3(0, 0, 1)).Normalised());
+		Debug::DrawLine(GooseRay.GetPosition(), GooseRay.GetPosition() + GooseRay.GetDirection() * 1000.0f, Vector4(1, 1, 0, 1));
+
+		lockedObject = CanadaGoose;
+		if (Window::GetKeyboard()->KeyDown(KeyboardKeys::U)) {
+			CanadaGoose->GetPhysicsObject()->AddForce(GooseRay.GetDirection() * 100.0f);
+		}
+
+		if (Window::GetKeyboard()->KeyDown(KeyboardKeys::J)) {
+			CanadaGoose->GetPhysicsObject()->AddForce(GooseRay.GetDirection() * 100.0f);
+		}
+
+		if (Window::GetKeyboard()->KeyDown(KeyboardKeys::K)) {
+			CanadaGoose->GetPhysicsObject()->AddTorque(Vector3(0, -10, 0));
+		}
+
+		if (Window::GetKeyboard()->KeyDown(KeyboardKeys::H)) {
+			CanadaGoose->GetPhysicsObject()->AddTorque(Vector3(0, 10, 0));
+		}
+	}
 }
 
 GameObject* TutorialGame::AddParkKeeperToWorld(const Vector3& position)
@@ -438,7 +509,7 @@ GameObject* TutorialGame::AddParkKeeperToWorld(const Vector3& position)
 	float meshSize = 4.0f;
 	float inverseMass = 0.5f;
 
-	GameObject* keeper = new GameObject();
+	GameObject* keeper = new GameObject("parkkeeper");
 
 	AABBVolume* volume = new AABBVolume(Vector3(0.3, 0.9f, 0.3) * meshSize);
 	keeper->SetBoundingVolume((CollisionVolume*)volume);
@@ -454,7 +525,56 @@ GameObject* TutorialGame::AddParkKeeperToWorld(const Vector3& position)
 
 	world->AddGameObject(keeper);
 
+
+
+	ParkKeeperMachine();
+
 	return keeper;
+}
+
+void TutorialGame::ParkKeeperMachine() {
+
+	PKmachine = new StateMachine();
+	//干什么
+	StateFunc AFunc = &ParkKpeeperMove;
+	StateFunc BFunc = &ParkKpeeperDetection;
+
+	GenericState* stateA = new GenericState(AFunc, (void*)&PKflag);
+	GenericState* stateB = new GenericState(BFunc, (void*)&PKflag);
+	PKmachine->AddState(stateA);
+	PKmachine->AddState(stateB);
+
+	//转换条件
+	GenericTransition <int&, int >* transitionA =
+		new GenericTransition <int&, int >(
+			GenericTransition <int&, int >::GreaterThanTransition,
+			PKflag, 1, stateA, stateB); // if greater than 1, A to B
+
+	GenericTransition <int&, int >* transitionB =
+		new GenericTransition <int&, int >(
+			GenericTransition <int&, int >::EqualsTransition,
+			PKflag, 0, stateB, stateA); // if equals 0, B to A
+
+	PKmachine->AddTransition(transitionA);
+	PKmachine->AddTransition(transitionB);
+
+}
+
+void TutorialGame::ParkKpeeperMove(void*) {
+
+}
+
+void TutorialGame::ParkKpeeperDetection(void* ) {
+	Ray PKRay(This_TutorialGame->ParkKeeper->GetTransform().GetWorldPosition(), (This_TutorialGame->ParkKeeper->GetTransform().GetLocalOrientation() * Vector3(0, 0, 1)).Normalised());
+	Debug::DrawLine(PKRay.GetPosition(), PKRay.GetPosition() + PKRay.GetDirection() * 1000.0f, Vector4(1, 0, 0, 1));
+
+	RayCollision closestCollision;
+
+	if (This_TutorialGame->world->Raycast(PKRay, closestCollision, true)) {
+		if (This_TutorialGame->CanadaGoose == (GameObject*)closestCollision.node) {
+			This_TutorialGame->PKflag = 10;
+		}
+	}
 }
 
 GameObject* TutorialGame::AddCharacterToWorld(const Vector3& position) {
@@ -494,7 +614,7 @@ GameObject* TutorialGame::AddCharacterToWorld(const Vector3& position) {
 }
 
 GameObject* TutorialGame::AddAppleToWorld(const Vector3& position) {
-	GameObject* apple = new GameObject();
+	GameObject* apple = new GameObject("apple");
 
 	SphereVolume* volume = new SphereVolume(0.7f);
 	apple->SetBoundingVolume((CollisionVolume*)volume);
@@ -506,6 +626,7 @@ GameObject* TutorialGame::AddAppleToWorld(const Vector3& position) {
 
 	apple->GetPhysicsObject()->SetInverseMass(1.0f);
 	apple->GetPhysicsObject()->InitSphereInertia();
+	apple->GetRenderObject()->SetColour(Vector4(1, 0, 0, 1));
 
 	world->AddGameObject(apple);
 

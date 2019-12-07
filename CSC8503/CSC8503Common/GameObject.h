@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "Transform.h"
 #include "CollisionVolume.h"
 
@@ -18,6 +18,8 @@ namespace NCL {
 		public:
 			GameObject(string name = "");
 			~GameObject();
+
+			int isWall = 0;
 
 			void SetBoundingVolume(CollisionVolume* vol) {
 				boundingVolume = vol;
@@ -69,14 +71,23 @@ namespace NCL {
 
 			virtual void OnCollisionEnd(GameObject* otherObject) {
 				//std::cout << "OnCollisionEnd event occured!\n";
+			} 
+			
+			virtual void Update(float dt) {
+
 			}
 
 			bool GetBroadphaseAABB(Vector3&outsize) const;
 
 			void UpdateBroadphaseAABB();
 
+			void SetCollisionPos(Vector3& pos) {
+				collidedAt = pos;
+			}
+
+			string PrintCollisionPos() ;
 		protected:
-			Transform			transform;
+			Transform			transform; //存储位置
 
 			CollisionVolume*	boundingVolume;
 			PhysicsObject*		physicsObject;
@@ -87,6 +98,10 @@ namespace NCL {
 			string	name;
 
 			Vector3 broadphaseAABB;
+
+			//鼠标点击位置
+			Vector3		collidedAt;
+			string		CollisionPos;
 		};
 	}
 }

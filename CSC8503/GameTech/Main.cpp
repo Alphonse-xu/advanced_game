@@ -15,8 +15,46 @@
 using namespace NCL;
 using namespace CSC8503;
 
-void TestStateMachine() {
-}
+//void TestStateMachine() {
+//	StateMachine* testMachine = new StateMachine();
+//	
+//		int someData = 0;
+//	
+//		StateFunc AFunc = [](void* data) {
+//		int* realData = (int*)data;
+//		(*realData)++;
+//		std::cout << "In State A!" << std::endl;
+//		};
+//	StateFunc BFunc = [](void* data) {
+//		int* realData = (int*)data;
+//		(*realData)--;
+//		std::cout << "In State B!" << std::endl;
+//		};
+//	
+//	GenericState * stateA = new GenericState(AFunc, (void*)&someData);
+//	GenericState * stateB = new GenericState(BFunc, (void*)&someData);
+//	testMachine->AddState(stateA);
+//	testMachine->AddState(stateB);
+//
+//	GenericTransition <int&, int >* transitionA =
+//		new GenericTransition <int&, int >(
+//			GenericTransition <int&, int >::GreaterThanTransition,
+//			someData, 10, stateA, stateB); // if greater than 10, A to B
+//	
+//		GenericTransition <int&, int > * transitionB =
+//		new GenericTransition <int&, int >(
+//			GenericTransition <int&, int >::EqualsTransition,
+//			someData, 0, stateB, stateA); // if equals 0, B to A
+//	
+//		testMachine->AddTransition(transitionA);
+//	testMachine->AddTransition(transitionB);
+//	
+//		for (int i = 0; i < 100; ++i) {
+//		testMachine->Update(); // run the state machine !
+//		
+//	}
+//	delete testMachine;
+//}
 
 void TestNetworking() {
 }
@@ -24,12 +62,32 @@ void TestNetworking() {
 vector<Vector3> testNodes;
 
 void TestPathfinding() {
-
+	NavigationGrid grid("TestGrid1.txt");
+	
+	NavigationPath outPath;
+	
+	Vector3 startPos(80, 0, 10);
+	Vector3 endPos(80, 0, 80);
+	
+	bool found = grid.FindPath(startPos, endPos, outPath);
+	
+		Vector3 pos;
+	while (outPath.PopWaypoint(pos)) {
+		testNodes.push_back(pos);
+		
+	}
+	
 }
-
 void DisplayPathfinding() {
-
+	for (int i = 1; i < testNodes.size(); ++i) {
+		Vector3 a = testNodes[i - 1];
+		a.y += 20;
+		Vector3 b = testNodes[i];
+		b.y += 20;
+		Debug::DrawLine(a, b, Vector4(0, 1, 0, 1));
+	}
 }
+
 
 
 
@@ -54,12 +112,13 @@ int main() {
 
 	//TestStateMachine();
 	//TestNetworking();
-	//TestPathfinding();
+	TestPathfinding();
 	
 	w->ShowOSPointer(false);
 	w->LockMouseToWindow(true);
 
 	TutorialGame* g = new TutorialGame();
+	g->ParkKeeperMachine();
 
 	while (w->UpdateWindow() && !Window::GetKeyboard()->KeyDown(KeyboardKeys::ESCAPE)) {
 		float dt = w->GetTimer()->GetTimeDeltaSeconds();

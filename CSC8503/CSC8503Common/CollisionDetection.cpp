@@ -35,7 +35,7 @@ bool CollisionDetection::RayIntersection(const Ray& r,GameObject& object, RayCol
 	return false;
 }
 
-//光线与盒子的碰撞
+//光线与盒子(AABB/OBB)的碰撞检测
 bool CollisionDetection::RayBoxIntersection(const Ray&r, const Vector3& boxPos, const Vector3& boxSize, RayCollision& collision) {
 	Vector3 boxMin = boxPos - boxSize;
 	Vector3 boxMax = boxPos + boxSize;
@@ -80,14 +80,14 @@ bool CollisionDetection::RayBoxIntersection(const Ray&r, const Vector3& boxPos, 
 		
 }
 
-//AABB碰撞RayBoxIntersection函数
+//Ray / AABB碰撞
 bool CollisionDetection::RayAABBIntersection(const Ray&r, const Transform& worldTransform, const AABBVolume& volume, RayCollision& collision) {
 	Vector3 boxPos = worldTransform.GetWorldPosition();
 	Vector3 boxSize = volume.GetHalfDimensions(); 
 	return RayBoxIntersection(r, boxPos, boxSize, collision);
 }
 
-//从AABB获取框的大小和位置
+//Ray / OBB碰撞
 bool CollisionDetection::RayOBBIntersection(const Ray&r, const Transform& worldTransform, const OBBVolume& volume, RayCollision& collision) {
 	Quaternion orientation = worldTransform.GetWorldOrientation();
 	Vector3 position = worldTransform.GetWorldPosition();
@@ -112,8 +112,10 @@ bool CollisionDetection::RayOBBIntersection(const Ray&r, const Transform& worldT
 
 //Ray / Sphere碰撞
 bool CollisionDetection::RaySphereIntersection(const Ray&r, const Transform& worldTransform, const SphereVolume& volume, RayCollision& collision) {
+
 	Vector3 spherePos = worldTransform.GetWorldPosition();
 	float sphereRadius = volume.GetRadius();
+
 	// Get the direction between the ray origin and the sphere origin
 	Vector3 dir = (spherePos - r.GetPosition());
 	// Then project the sphere 's origin onto our ray direction vector
@@ -137,6 +139,10 @@ bool CollisionDetection::RaySphereIntersection(const Ray&r, const Transform& wor
 }
 
 bool CollisionDetection::ObjectIntersection(GameObject* a, GameObject* b, CollisionInfo& collisionInfo) {
+
+	if (a->isWall == 1){}
+	else{
+
 	const CollisionVolume* volA = a->GetBoundingVolume(); //获取碰撞体积的指针来开始该方法的对象
 	const CollisionVolume* volB = b->GetBoundingVolume();
 	if (!volA || !volB) {
@@ -171,6 +177,8 @@ bool CollisionDetection::ObjectIntersection(GameObject* a, GameObject* b, Collis
 		
 	}
 	return false;
+
+	}
 }
 
 //告诉我们是否这些物体正在碰撞

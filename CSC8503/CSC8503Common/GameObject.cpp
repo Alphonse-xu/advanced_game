@@ -10,6 +10,7 @@ GameObject::GameObject(string objectName)	{
 	physicsObject	= nullptr;
 	renderObject	= nullptr;
 	networkObject	= nullptr;
+	CollisionPos	= objectName;
 }
 
 GameObject::~GameObject()	{
@@ -17,6 +18,11 @@ GameObject::~GameObject()	{
 	delete physicsObject;
 	delete renderObject;
 	delete networkObject;
+}
+
+string GameObject::PrintCollisionPos() {
+	CollisionPos = "x = " + std::to_string(collidedAt.x) + " y = " + std::to_string(collidedAt.y) + " x = " + std::to_string(collidedAt.z);
+	return CollisionPos;
 }
 
 bool GameObject::GetBroadphaseAABB(Vector3&outSize) const {

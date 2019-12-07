@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 namespace NCL {
 	namespace CSC8503 {
@@ -27,9 +27,9 @@ namespace NCL {
 		class GenericTransition : public StateTransition
 		{
 		public:
-			typedef bool(*GenericTransitionFunc)(T, U);
+			typedef bool(*GenericTransitionFunc)(T, U); //
 			GenericTransition(GenericTransitionFunc f, T testData, U otherData, State* srcState, State* destState) :
-				dataA(testData), dataB(otherData)
+				dataA(testData), dataB(otherData) //实例化dataA和dataB变量。初始化程序列表
 			{
 				func				= f;
 				sourceState			= srcState;		//
@@ -37,7 +37,7 @@ namespace NCL {
 			}
 			~GenericTransition() {}
 
-			virtual bool CanTransition() const override{
+			virtual bool CanTransition() const override{//确定是否应该从一种状态更改为另一种状态
 				if (func) {
 					return func(dataA, dataB);
 				}

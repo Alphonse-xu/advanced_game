@@ -152,6 +152,9 @@
     <ClInclude Include="NetworkPlayer.h" />
     <ClInclude Include="TutorialGame.h" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\..\Assets\Data\TestGrid1.txt" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

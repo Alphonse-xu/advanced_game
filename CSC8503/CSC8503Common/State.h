@@ -17,11 +17,12 @@ namespace NCL {
 				func		= someFunc;
 				funcData	= someData;
 			}
-			virtual void Update() {
+			void Update() override{
 				if (funcData != nullptr) {
 					func(funcData);
 				}
 			}
+
 		protected:
 			StateFunc func;
 			void* funcData;
