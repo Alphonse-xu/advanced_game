@@ -6,6 +6,7 @@
 #include "GameTechRenderer.h"
 #include "../CSC8503Common/PhysicsSystem.h"
 #include "ParkKeeper.h"
+#include "../CSC8503Common/NavigationGrid.h"
 
 
 namespace NCL {
@@ -54,7 +55,13 @@ namespace NCL {
 			GameObject* AddParkKeeperToWorld(const Vector3& position);
 			GameObject* AddCharacterToWorld(const Vector3& position);
 			GameObject* AddAppleToWorld(const Vector3& position);
+			void AddMapToWorld();
+			Vector3 PKPos;
+			Vector3 GoosePos;
+			Vector3 ApplePos;
 
+			NavigationGrid* grid;
+			vector<Vector3> testNodes;
 			static TutorialGame* This_TutorialGame;
 			GameObject* CanadaGoose;
 			GameObject* ParkKeeper;

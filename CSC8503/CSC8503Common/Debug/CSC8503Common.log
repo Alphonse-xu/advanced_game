@@ -1,11 +1,6 @@
-﻿  CollisionDetection.cpp
-  GameObject.cpp
-  GameServer.cpp
-  GameWorld.cpp
-  NetworkObject.cpp
-  PhysicsObject.cpp
-  PhysicsSystem.cpp
-  PositionConstraint.cpp
-  Generating Code...
-C:\Users\b8067791\source\repos\advance game\advanced_game\CSC8503\CSC8503Common\CollisionDetection.cpp(182): warning C4715: 'NCL::CollisionDetection::ObjectIntersection': not all control paths return a value
+﻿  NavigationGrid.cpp
+C:\Users\b8067791\source\repos\advance game\advanced_game\CSC8503\CSC8503Common\NavigationGrid.cpp(83,12): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
+C:\Users\b8067791\source\repos\advance game\advanced_game\CSC8503\CSC8503Common\NavigationGrid.cpp(84,12): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
+C:\Users\b8067791\source\repos\advance game\advanced_game\CSC8503\CSC8503Common\NavigationGrid.cpp(86,10): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
+C:\Users\b8067791\source\repos\advance game\advanced_game\CSC8503\CSC8503Common\NavigationGrid.cpp(87,10): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
   CSC8503Common.vcxproj -> C:\Users\b8067791\source\repos\advance game\advanced_game\Win32\Debug\CSC8503Common.lib

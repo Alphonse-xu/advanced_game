@@ -36,7 +36,9 @@ NavigationGrid::NavigationGrid(const std::string&filename) : NavigationGrid() {
 			char type = 0;
 			infile >> type;
 			n.type = type;
+			//std::cout << n.type << std::endl;
 			n.position = Vector3((float)(x * nodeSize), 0, (float)(y * nodeSize));
+			//std::cout << n.position << std::endl;
 		}
 	}
 	
@@ -93,7 +95,7 @@ bool NavigationGrid::FindPath(const Vector3& from, const Vector3& to, Navigation
 	}
 
 	GridNode* startNode = &allNodes[(fromZ * gridWidth) + fromX];
-	GridNode * endNode = &allNodes[(toZ * gridWidth) + toX];
+	GridNode* endNode = &allNodes[(toZ * gridWidth) + toX];
 	
 	std::vector < GridNode*> openList;
 	std::vector < GridNode*> closedList;

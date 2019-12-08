@@ -15,6 +15,8 @@ TutorialGame* TutorialGame::This_TutorialGame = nullptr;
 TutorialGame::TutorialGame()	{
 	This_TutorialGame = this;
 
+	grid = new NavigationGrid("TestGrid1.txt");
+
 	world		= new GameWorld();
 	renderer	= new GameTechRenderer(*world);
 	physics		= new PhysicsSystem(*world);
@@ -346,15 +348,19 @@ void TutorialGame::InitWorld() {
 	world->ClearAndErase();
 	physics->Clear();
 
-	InitMixedGridWorld(10, 10, 3.5f, 3.5f);
-	CanadaGoose = AddGooseToWorld(Vector3(30, 2, 0));
-	RedApple = AddAppleToWorld(Vector3(35, 2, 0));
+	//InitMixedGridWorld(10, 10, 3.5f, 3.5f);
+	GoosePos = Vector3(-90, 2, -90);
+	ApplePos = Vector3(-10, 2, -10);
+	PKPos = Vector3(40, 2, 0);
 
-	ParkKeeper = AddParkKeeperToWorld(Vector3(40, 2, 0));
+	CanadaGoose = AddGooseToWorld(GoosePos);
+	RedApple = AddAppleToWorld(ApplePos);
+	ParkKeeper = AddParkKeeperToWorld(PKPos);
 	AddCharacterToWorld(Vector3(45, 2, 0));
 
-	AddFloorToWorld(Vector3(0, -1, 0));
-	AddWaterToWorld(Vector3(0, -8, 0));
+	AddFloorToWorld(Vector3(0, -10, 0));
+	//AddWaterToWorld(Vector3(0, -50, 0));
+	AddMapToWorld();
 }
 
 //From here on it's functions to add in objects to the world!
@@ -364,8 +370,24 @@ void TutorialGame::InitWorld() {
 A single function to add a large immoveable cube to the bottom of our world
 
 */
+
+void TutorialGame::AddMapToWorld() {
+	Vector3 cubeDims = Vector3(5, 5, 5);
+	Vector3 CubePos;  
+	for (int i = 0; i < grid->GetCubeNum(); i++)
+	{
+		if ((grid->GetAllnodes())[i].type == 'x')
+		{
+			CubePos = Vector3((grid->GetAllnodes())[i].position.x-100, 0, (grid->GetAllnodes())[i].position.z-100);
+			AddCubeToWorld(CubePos, cubeDims);
+		}
+		
+	}
+	
+}
+
 GameObject* TutorialGame::AddFloorToWorld(const Vector3& position) {
-	GameObject* floor = new GameObject();
+	GameObject* floor = new GameObject("floor");
 
 	Vector3 floorSize = Vector3(100, 2, 100);
 	AABBVolume* volume = new AABBVolume(floorSize);
@@ -385,7 +407,7 @@ GameObject* TutorialGame::AddFloorToWorld(const Vector3& position) {
 }
 
 GameObject* TutorialGame::AddWaterToWorld(const Vector3& position) {
-	GameObject* water = new GameObject();
+	GameObject* water = new GameObject("water");
 
 	Vector3 waterSize = Vector3(100, 2, 100);
 	AABBVolume* volume = new AABBVolume(waterSize);
@@ -413,7 +435,7 @@ physics worlds. You'll probably need another function for the creation of OBB cu
 
 */
 GameObject* TutorialGame::AddSphereToWorld(const Vector3& position, float radius, float inverseMass) {
-	GameObject* sphere = new GameObject();
+	GameObject* sphere = new GameObject("sphere");
 
 	Vector3 sphereSize = Vector3(radius, radius, radius);
 	SphereVolume* volume = new SphereVolume(radius);
@@ -433,7 +455,7 @@ GameObject* TutorialGame::AddSphereToWorld(const Vector3& position, float radius
 }
 
 GameObject* TutorialGame::AddCubeToWorld(const Vector3& position, Vector3 dimensions, float inverseMass) {
-	GameObject* cube = new GameObject();
+	GameObject* cube = new GameObject("cube");
 
 	AABBVolume* volume = new AABBVolume(dimensions);
 
@@ -525,8 +547,6 @@ GameObject* TutorialGame::AddParkKeeperToWorld(const Vector3& position)
 
 	world->AddGameObject(keeper);
 
-
-
 	ParkKeeperMachine();
 
 	return keeper;
@@ -561,7 +581,36 @@ void TutorialGame::ParkKeeperMachine() {
 }
 
 void TutorialGame::ParkKpeeperMove(void*) {
+	NavigationPath outPath;
+	/*Vector3 startPos(20, 0, 10);
+	Vector3 endPos(20, 0, 80);*/
+	//PKpos goosepos
+	bool found = This_TutorialGame->grid->FindPath(This_TutorialGame->PKPos, This_TutorialGame->GoosePos, outPath);
 
+	Vector3 pos;
+	while (outPath.PopWaypoint(pos)) {
+		This_TutorialGame->testNodes.push_back(pos);
+	}
+
+	for (int i = 1; i < This_TutorialGame->testNodes.size(); ++i) {
+		Vector3 a = This_TutorialGame->testNodes[i - 1];
+		a.y += 20;
+		Vector3 b = This_TutorialGame->testNodes[i];
+		b.y += 20;
+		Debug::DrawLine(a, b, Vector4(0, 1, 0, 1));
+	}
+
+	Vector3 ParkKeeperPos;
+	for (int i = 0; i < This_TutorialGame->grid->GetCubeNum(); i++)
+	{
+		for (int j = 0; j < 100; j++)
+		{
+			ParkKeeperPos = (This_TutorialGame->grid->GetAllnodes())[i].position + ( (This_TutorialGame->grid->GetAllnodes())[i+1].position - (This_TutorialGame->grid->GetAllnodes())[i].position ) / 100 *j;
+
+			This_TutorialGame->ParkKeeper->GetTransform().SetWorldPosition(ParkKeeperPos);
+		}
+		
+	}
 }
 
 void TutorialGame::ParkKpeeperDetection(void* ) {
