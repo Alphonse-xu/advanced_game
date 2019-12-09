@@ -19,7 +19,7 @@ namespace NCL {
 			GameObject(string name = "");
 			~GameObject();
 
-			int isWall = 0;
+			//int isWall = 0;
 
 			void SetBoundingVolume(CollisionVolume* vol) {
 				boundingVolume = vol;

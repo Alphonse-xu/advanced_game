@@ -139,10 +139,6 @@ bool CollisionDetection::RaySphereIntersection(const Ray&r, const Transform& wor
 }
 
 bool CollisionDetection::ObjectIntersection(GameObject* a, GameObject* b, CollisionInfo& collisionInfo) {
-
-	if (a->isWall == 1){}
-	else{
-
 	const CollisionVolume* volA = a->GetBoundingVolume(); //获取碰撞体积的指针来开始该方法的对象
 	const CollisionVolume* volB = b->GetBoundingVolume();
 	if (!volA || !volB) {
@@ -178,7 +174,6 @@ bool CollisionDetection::ObjectIntersection(GameObject* a, GameObject* b, Collis
 	}
 	return false;
 
-	}
 }
 
 //告诉我们是否这些物体正在碰撞

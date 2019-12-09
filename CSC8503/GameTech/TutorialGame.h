@@ -46,11 +46,12 @@ namespace NCL {
 			void LockedObjectMovement();
 			void LockedCameraMovement();
 
-			GameObject* TutorialGame::AddWaterToWorld(const Vector3& position);
+			GameObject* AddWaterToWorld(const Vector3& position);
 			GameObject* AddFloorToWorld(const Vector3& position);
 			GameObject* AddSphereToWorld(const Vector3& position, float radius, float inverseMass = 10.0f);
-			GameObject* AddCubeToWorld(const Vector3& position, Vector3 dimensions, float inverseMass = 10.0f);
+			GameObject* AddCubeToWorld(const Vector3& position, Vector3 dimensions, string CubeName,float inverseMass = 10.0f);
 			//IT'S HAPPENING
+			GameObject* AddIslandToWorld(const Vector3& position);
 			GameObject* AddGooseToWorld(const Vector3& position);
 			GameObject* AddParkKeeperToWorld(const Vector3& position);
 			GameObject* AddCharacterToWorld(const Vector3& position);
