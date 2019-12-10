@@ -192,7 +192,7 @@ void  TutorialGame::LockedCameraMovement() {
 		Vector3 angles = q.ToEuler(); //nearly there now!
 
 		world->GetMainCamera()->SetPosition(camPos);
-		world->GetMainCamera()->SetPitch(angles.x);
+		world->GetMainCamera()->SetPitch(angles.x-90);
 		world->GetMainCamera()->SetYaw(angles.y );
 	}
 }
@@ -348,9 +348,10 @@ void TutorialGame::InitWorld() {
 	world->ClearAndErase();
 	physics->Clear();
 
+	
 	//InitMixedGridWorld(10, 10, 3.5f, 3.5f);
-	GoosePos = Vector3(-85, 2, -85);
-	ApplePos = Vector3(-15, 2, -15);
+	GoosePos = Vector3(0, 2, -85);
+	ApplePos = Vector3(-15, 0, -15);
 	PKPos = Vector3(35, 2, 0);
 
 	CanadaGoose = AddGooseToWorld(GoosePos);
@@ -358,10 +359,12 @@ void TutorialGame::InitWorld() {
 	ParkKeeper = AddParkKeeperToWorld(PKPos);
 	AddCharacterToWorld(Vector3(45, 50, 0));
 
-	AddFloorToWorld(Vector3(0, -10, 0));
-	AddWaterToWorld(Vector3(-85, -10, -105));
-	AddIslandToWorld(Vector3(-85, -9, -105));
+	AddFloorToWorld(Vector3(-55, -9, 0));
+	AddFloorToWorld(Vector3(55, -9, 0));
+	AddWaterToWorld(Vector3(0, -9, 0));
+	AddIslandToWorld(Vector3(0, 0, -85));
 	AddMapToWorld();
+	GameManual();
 }
 
 //From here on it's functions to add in objects to the world!
@@ -375,24 +378,26 @@ A single function to add a large immoveable cube to the bottom of our world
 void TutorialGame::AddMapToWorld() {
 	Vector3 cubeDims = Vector3(5, 5, 5);
 	Vector3 CubePos;  
-	string name = "wall";
 	for (int i = 0; i < grid->GetCubeNum(); i++)
 	{
 		if ((grid->GetAllnodes())[i].type == 'x')
 		{
-			CubePos = Vector3((grid->GetAllnodes())[i].position.x, 0, (grid->GetAllnodes())[i].position.z);
-			AddCubeToWorld(CubePos, cubeDims,name);
+			CubePos = Vector3((grid->GetAllnodes())[i].position.x-95, 0, (grid->GetAllnodes())[i].position.z-95);
+			AddCubeToWorld(CubePos, cubeDims,"realwall",0);
 		}
 		
 	}
 	
+	//AddCubeToWorld(CubePos, cubeDims, "airwall", 0);
+	//AddCubeToWorld(CubePos, cubeDims, "stair", 0);
+	
 }
 
 GameObject* TutorialGame::AddIslandToWorld(const Vector3& position) {
-	Vector3 islandDims = Vector3(3, 0.5, 3);
+	Vector3 islandDims = Vector3(3, 1, 3);
 
 	GameObject* Island = new GameObject("island");
-	AddCubeToWorld(position, islandDims, "island");
+	AddCubeToWorld(position, islandDims, "island",0);
 
 
 	return Island;
@@ -401,7 +406,7 @@ GameObject* TutorialGame::AddIslandToWorld(const Vector3& position) {
 GameObject* TutorialGame::AddFloorToWorld(const Vector3& position) {
 	GameObject* floor = new GameObject("floor");
 
-	Vector3 floorSize = Vector3(100, 2, 100);
+	Vector3 floorSize = Vector3(35, 1, 100);
 	AABBVolume* volume = new AABBVolume(floorSize);
 	floor->SetBoundingVolume((CollisionVolume*)volume);
 	floor->GetTransform().SetWorldScale(floorSize);
@@ -421,7 +426,7 @@ GameObject* TutorialGame::AddFloorToWorld(const Vector3& position) {
 GameObject* TutorialGame::AddWaterToWorld(const Vector3& position) {
 	GameObject* water = new GameObject("water");
 
-	Vector3 waterSize = Vector3(5, 2, 5);
+	Vector3 waterSize = Vector3(20, 1, 100);
 	AABBVolume* volume = new AABBVolume(waterSize);
 	water->SetBoundingVolume((CollisionVolume*)volume);
 	water->GetTransform().SetWorldScale(waterSize);
@@ -539,6 +544,8 @@ void TutorialGame::CanadaGooseMove() {
 		if (Window::GetKeyboard()->KeyDown(KeyboardKeys::SPACE)) {
 			CanadaGoose->GetPhysicsObject()->AddForce(Vector3(0, 50, 0));
 		}
+
+		AppleDetection();
 	}
 }
 
@@ -598,16 +605,19 @@ void TutorialGame::ParkKeeperMachine() {
 
 void TutorialGame::ParkKpeeperMove(void*) {
 	NavigationPath outPath;
-	Vector3 startPos(20, 0, 10);
-	Vector3 endPos(10, 0, 20);
-	//PKpos This_TutorialGame->PKPos goosepos This_TutorialGame->GoosePos
+	Vector3 startPos(10, 0, 10);
+	Vector3 endPos(30, 0, 10);
+	//PKpos This_TutorialGame->PKPos goosepos This_TutorialGame->GoosePos Vector3(0, 0, -85)
 
 	This_TutorialGame->testNodes.clear();
 
-	bool found = This_TutorialGame->grid->FindPath(startPos, endPos , outPath);
+	bool found = This_TutorialGame->grid->FindPath(startPos, endPos, outPath);
 
 	Vector3 pos;
 	while (outPath.PopWaypoint(pos)) {
+		pos.x -= 95;
+		pos.z -= 95;
+
 		This_TutorialGame->testNodes.push_back(pos);
 
 		//std::cout << pos << std::endl;
@@ -615,28 +625,26 @@ void TutorialGame::ParkKpeeperMove(void*) {
 
 	for (int i = 1; i < This_TutorialGame->testNodes.size(); ++i) {
 		Vector3 a = This_TutorialGame->testNodes[i - 1];
-		//a.y += 20;
 		Vector3 b = This_TutorialGame->testNodes[i];
-		//b.y += 20;
 		Debug::DrawLine(a, b, Vector4(0, 1, 0, 1));
 	}
 
-	Vector3 ParkKeeperPos;
-	for (int i = 0; i < This_TutorialGame->grid->GetCubeNum()-1; i++)
-	{
-		for (int j = 0; j < 2; j++)
-		{
-			ParkKeeperPos = (This_TutorialGame->grid->GetAllnodes())[i].position + ( (This_TutorialGame->grid->GetAllnodes())[i+1].position - (This_TutorialGame->grid->GetAllnodes())[i].position ) / 2 *j;
+	Vector3 ParkKeeperPos = startPos;
+	//for (int i = 0; i < This_TutorialGame->testNodes.size() -1; i++)
+	//{
+	//	for (int j = 0; j < 101; j++)
+	//	{
+	//		//ParkKeeperPos = (This_TutorialGame->grid->GetAllnodes())[i].position + ( (This_TutorialGame->grid->GetAllnodes())[i+1].position - (This_TutorialGame->grid->GetAllnodes())[i].position ) / 2 *j;
 
-			if (ParkKeeperPos.y != 0.0f) {
-				bool a = true;
-			}
+	//		ParkKeeperPos = (This_TutorialGame->testNodes)[i] + ( (This_TutorialGame->testNodes)[i+1] - (This_TutorialGame->testNodes)[i] ) / 100 *j;
 
-			This_TutorialGame->ParkKeeper->GetTransform().SetWorldPosition(ParkKeeperPos);
-		}
-		
-	}
+	//		
 
+	//		This_TutorialGame->ParkKeeper->GetTransform().SetWorldPosition(ParkKeeperPos);
+	//	}
+	//	
+	//}
+	This_TutorialGame->ParkKeeper->GetTransform().SetWorldPosition(ParkKeeperPos);
 	//std::cout << This_TutorialGame->ParkKeeper->GetTransform().GetWorldPosition();
 }
 
@@ -707,6 +715,16 @@ GameObject* TutorialGame::AddAppleToWorld(const Vector3& position) {
 	world->AddGameObject(apple);
 
 	return apple;
+}
+
+void TutorialGame::AppleDetection() {
+	if (physics->apple_goose_detection == true) {
+		Vector3 CGoosePos = CanadaGoose->GetTransform().GetWorldPosition();
+		CGoosePos.y += 1;
+		RedApple->GetTransform().SetWorldPosition(CGoosePos);
+
+	}
+
 }
 
 void TutorialGame::InitSphereGridWorld(int numRows, int numCols, float rowSpacing, float colSpacing, float radius) {
@@ -788,5 +806,13 @@ void TutorialGame::SimpleGJKTest() {
 	fallingCube->SetBoundingVolume((CollisionVolume*)new OBBVolume(dimensions));
 	newFloor->SetBoundingVolume((CollisionVolume*)new OBBVolume(floorDimensions));
 
+}
+
+void TutorialGame::GameManual() {
+	ManualCube=AddCubeToWorld(Vector3(-300, 0, -300), Vector3(100, 1, 100), "manual", 0.0f);
+
+	//按钮
+	AddCubeToWorld(Vector3(-300, 10, -320), Vector3(20, 0.1, 10), "manual", 0.0f);
+	AddCubeToWorld(Vector3(-300, 10, -290), Vector3(20, 0.1, 10), "manual", 0.0f);
 }
 

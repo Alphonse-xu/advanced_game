@@ -22,6 +22,10 @@ namespace NCL {
 			}
 
 			void SetGravity(const Vector3& g);
+
+			bool goose_water_detection = false;
+			bool apple_goose_detection = false;
+
 		protected:
 			void BasicCollisionDetection();
 			void BroadPhase();

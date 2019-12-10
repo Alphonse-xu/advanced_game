@@ -1,1 +1,8 @@
-﻿  OpenGLRendering.vcxproj -> C:\Users\b8067791\source\repos\advance game\advanced_game\Win32\Debug\OpenGLRendering.lib
+﻿  glad.c
+  OGLComputeShader.cpp
+  OGLMesh.cpp
+  OGLRenderer.cpp
+  OGLShader.cpp
+  OGLTexture.cpp
+  Generating Code...
+  OpenGLRendering.vcxproj -> C:\Users\b8067791\source\repos\advance game\advanced_game\Win32\Debug\OpenGLRendering.lib

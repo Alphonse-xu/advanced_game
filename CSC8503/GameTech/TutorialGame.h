@@ -64,9 +64,12 @@ namespace NCL {
 			NavigationGrid* grid;
 			vector<Vector3> testNodes;
 			static TutorialGame* This_TutorialGame;
+
 			GameObject* CanadaGoose;
+			GameObject* ManualCube;
 			GameObject* ParkKeeper;
 			GameObject* RedApple;
+			void AppleDetection();
 			void CanadaGooseMove();
 			static void ParkKpeeperMove(void*);
 			static void ParkKpeeperDetection(void*);
@@ -100,9 +103,12 @@ namespace NCL {
 			StateMachine* PKmachine = nullptr;
 			int PKflag = 0;
 
+			//菜单
+			void GameManual();
+
 			//Coursework Additional functionality	
 			GameObject* lockedObject	= nullptr;
-			Vector3 lockedOffset		= Vector3(10, 14, -20);
+			Vector3 lockedOffset		= Vector3(0, 100, 0);
 			void LockCameraToObject(GameObject* o) {
 				lockedObject = o;
 			}

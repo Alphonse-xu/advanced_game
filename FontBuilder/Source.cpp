@@ -53,6 +53,5 @@ int main(void) {
 				<< cdata[i].xadvance
 				<< std::endl;
 	}
-
 	return 0;
 }
