@@ -18,7 +18,7 @@ namespace NCL {
 
 			void AddState(State* s);
 			void AddTransition(StateTransition* t);
-
+			void SetActiveState(State* currentstate) { activeState = currentstate; }
 			void Update();
 
 		protected:

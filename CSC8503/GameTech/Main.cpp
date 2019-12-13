@@ -56,8 +56,60 @@ using namespace CSC8503;
 //	delete testMachine;
 //}
 
-void TestNetworking() {
-}
+class TestPacketReceiver : public PacketReceiver {
+public:
+	TestPacketReceiver(string name) {
+		this->name = name;
+	}
+
+	void ReceivePacket(int type, GamePacket* payload, int source) {
+		if (type == String_Message) {
+			StringPacket* realPacket = (StringPacket*)payload;
+
+
+			string msg = realPacket->GetStringFromData();
+			Debug::Print("score is " + msg, Vector2(10, 120));
+			std::cout << name << " received message : " << msg << std::endl;
+
+		}
+	}
+protected:
+	string name;
+};
+
+//
+//void TestNetworking() {
+//	NetworkBase::Initialise();
+//
+//	TestPacketReceiver serverReceiver(" Server ");
+//	TestPacketReceiver clientReceiver(" Client ");
+//
+//	int port = NetworkBase::GetDefaultPort();
+//
+//	GameServer* server = new GameServer(port, 1);
+//	GameClient* client = new GameClient();
+//
+//	server->RegisterPacketHandler(String_Message, &serverReceiver);
+//	client->RegisterPacketHandler(String_Message, &clientReceiver);
+//
+//	bool canConnect = client->Connect(127, 0, 0, 1, port);
+//
+//	for (int i = 0; i < 100; ++i) {
+//		server->SendGlobalPacket(
+//			StringPacket(" Server says hello ! " + std::to_string(i)));
+//
+//		client->SendPacket(
+//			StringPacket(" Client says hello ! " + std::to_string(i)));
+//
+//		server->UpdateServer();
+//		client->UpdateClient();
+//
+//		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+//	}
+//
+//	NetworkBase::Destroy();
+//
+//}
 //
 //vector<Vector3> testNodes;
 //
@@ -87,8 +139,39 @@ void TestNetworking() {
 //	}
 //}
 
+void GoosegameServer() {
+
+	NetworkBase::Initialise();
+
+	TestPacketReceiver serverReceiver(" Server ");
+	int port = NetworkBase::GetDefaultPort();
+	GameServer* server = new GameServer(port, 1);
+	server->RegisterPacketHandler(String_Message, &serverReceiver);
 
 
+	server->SendGlobalPacket(StringPacket(" enemy score is 10 "));
+
+	server->UpdateServer();
+	std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	//Debug::Print("score is ", Vector2(10, 80));
+
+}
+
+void GoosegameClient(int score) {
+	TestPacketReceiver clientReceiver(" Client ");
+	int port = NetworkBase::GetDefaultPort();
+	GameClient* client = new GameClient();
+	client->RegisterPacketHandler(String_Message, &clientReceiver);
+
+	bool canConnect = client->Connect(127, 0, 0, 1, port);
+
+	client->SendPacket(StringPacket(" score is " + score));
+
+	client->UpdateClient();
+	Debug::Print("score is "+score, Vector2(10, 140));
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(10));
+}
 
 /*
 
@@ -103,6 +186,9 @@ hide or show the
 
 */
 int main() {
+
+	GoosegameServer();
+	GoosegameClient(0);
 	Window*w = Window::CreateGameWindow("CSC8503 Game technology!", 1280, 720);
 
 	if (!w->HasInitialised()) {
@@ -117,9 +203,11 @@ int main() {
 	w->LockMouseToWindow(true);
 
 	TutorialGame* g = new TutorialGame();
-	g->ParkKeeperMachine();
+//&& !Window::GetKeyboard()->KeyDown(KeyboardKeys::ESCAPE)
+	while (w->UpdateWindow() ) {
 
-	while (w->UpdateWindow() && !Window::GetKeyboard()->KeyDown(KeyboardKeys::ESCAPE)) {
+		//GoosegameServer();
+
 		float dt = w->GetTimer()->GetTimeDeltaSeconds();
 
 		if (dt > 1.0f) {
@@ -138,6 +226,11 @@ int main() {
 		w->SetTitle("Gametech frame time:" + std::to_string(1000.0f * dt));
 
 		g->UpdateGame(dt);
+
+		GoosegameClient(g->GetScore());
+
+
 	}
+	NetworkBase::Destroy();
 	Window::DestroyGameWindow();
 }

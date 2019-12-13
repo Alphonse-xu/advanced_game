@@ -14,6 +14,13 @@ TutorialGame* TutorialGame::This_TutorialGame = nullptr;
 
 TutorialGame::TutorialGame()	{
 	This_TutorialGame = this;
+	myGoosePos = Vector3(0, 2, -85);
+	yourGoosePos = Vector3(-85, 2, -85);
+	ApplePos = Vector3(80, 0, -85);
+	PKPos = Vector3(85, 0, -85);
+	myIslandPos = Vector3(0, -7, -85);
+	yourIslandPos = Vector3(-85, -7, -85);
+	DoubleMod = false;
 
 	grid = new NavigationGrid("TestGrid1.txt");
 
@@ -23,8 +30,8 @@ TutorialGame::TutorialGame()	{
 
 	forceMagnitude	= 10.0f;
 	useGravity		= false;
-	useGoose		= false;
 	inSelectionMode = false;
+	developmod = false;
 
 	Debug::SetRenderer(renderer);
 
@@ -54,6 +61,12 @@ void TutorialGame::InitialiseAssets() {
 	loadFunc("Apple.msh"	 , &appleMesh);
 
 	basicTex	= (OGLTexture*)TextureLoader::LoadAPITexture("checkerboard.png");
+	manualTex = (OGLTexture*)TextureLoader::LoadAPITexture("goose.png");
+	singleTex = (OGLTexture*)TextureLoader::LoadAPITexture("Single.png");
+	doubleTex = (OGLTexture*)TextureLoader::LoadAPITexture("double.png");
+	startTex = (OGLTexture*)TextureLoader::LoadAPITexture("start.png");
+	quitTex = (OGLTexture*)TextureLoader::LoadAPITexture("quit.png");
+
 	basicShader = new OGLShader("GameTechVert.glsl", "GameTechFrag.glsl");
 
 	InitCamera();
@@ -71,37 +84,67 @@ TutorialGame::~TutorialGame()	{
 	delete renderer;
 	delete world;
 
-	delete PKmachine;
+	delete PKMachine;
+	delete UIMachine;
 }
 
 void TutorialGame::UpdateGame(float dt) {
-	if (!inSelectionMode) {
-		world->GetMainCamera()->UpdateCamera(dt);
-	}
-	if (lockedObject != nullptr) {
-		LockedCameraMovement();
-	}
+	TimerDT = dt;
+	if (developmod) {
+		if (!inSelectionMode) {
+			world->GetMainCamera()->UpdateCamera(dt);
+		}
+		lockedObject = nullptr;
 
-	UpdateKeys();
+		UpdateKeys();
 
-	if (useGravity) {
-		Debug::Print("(G)ravity on", Vector2(10, 40));
+		if (useGravity) {
+			Debug::Print("(G)ravity on", Vector2(10, 40));
+		}
+		else {
+			Debug::Print("(G)ravity off", Vector2(10, 40));
+		}
+		SelectObject();
+		MoveSelectedObject();
+		CanadaGooseMove();
+
+		world->UpdateWorld(dt);
+		renderer->Update(dt);
+		physics->Update(dt);
+		constraint->UpdateConstraint(dt);
+		Debug::FlushRenderables();
+		renderer->Render();
+
+		//BridgeConstraintTest();
 	}
 	else {
-		Debug::Print("(G)ravity off", Vector2(10, 40));
+		if (!inSelectionMode) {
+			world->GetMainCamera()->UpdateCamera(dt);
+		}
+		if (lockedObject != nullptr) {
+			LockedCameraMovement();
+		}
+
+		UpdateKeys();
+
+		useGravity = true;
+		physics->UseGravity(useGravity);
+
+		SelectObject();
+		MoveSelectedObject();
+		CanadaGooseMove();
+		enemyMove();
+		PKMachine->Update();
+		world->UpdateWorld(dt);
+		renderer->Update(dt);
+		physics->Update(dt);
+		constraint->UpdateConstraint(dt);
+		Debug::FlushRenderables();
+		renderer->Render();
+
+		UIMachine->Update();
 	}
 
-	SelectObject();
-	MoveSelectedObject();
-	CanadaGooseMove();
-	PKmachine->Update(); // run the state machine !
-
-	world->UpdateWorld(dt);
-	renderer->Update(dt);
-	physics->Update(dt);
-
-	Debug::FlushRenderables();
-	renderer->Render();
 }
 
 void TutorialGame::UpdateKeys() {
@@ -112,7 +155,7 @@ void TutorialGame::UpdateKeys() {
 	}
 	
 	if (Window::GetKeyboard()->KeyPressed(KeyboardKeys::F11)) {
-		useGoose = !useGoose;
+		developmod = !developmod;
 	}
 	
 
@@ -193,7 +236,7 @@ void  TutorialGame::LockedCameraMovement() {
 
 		world->GetMainCamera()->SetPosition(camPos);
 		world->GetMainCamera()->SetPitch(angles.x-90);
-		world->GetMainCamera()->SetYaw(angles.y );
+		world->GetMainCamera()->SetYaw(angles.y + 180);
 	}
 }
 
@@ -288,16 +331,6 @@ bool TutorialGame::SelectObject() {
 
 		}
 
-		if (Window::GetKeyboard()->KeyPressed(NCL::KeyboardKeys::L)) {
-			if (selectionObject) {
-				if (lockedObject == selectionObject) {
-					lockedObject = nullptr;
-				}
-				else {
-					lockedObject = selectionObject;
-				}
-			}
-		}
 	}
 	else {
 		renderer->DrawString("Press Q to change to select mode!", Vector2(10, 0));
@@ -342,29 +375,37 @@ void TutorialGame::InitCamera() {
 	world->GetMainCamera()->SetYaw(315.0f);
 	world->GetMainCamera()->SetPosition(Vector3(-60, 40, 60));
 	lockedObject = nullptr;
+
 }
 
 void TutorialGame::InitWorld() {
 	world->ClearAndErase();
 	physics->Clear();
 
-	
-	//InitMixedGridWorld(10, 10, 3.5f, 3.5f);
-	GoosePos = Vector3(0, 2, -85);
-	ApplePos = Vector3(-15, 0, -15);
-	PKPos = Vector3(35, 2, 0);
+	score = 0;
+	PKflag = 4;
+	Manualflag = 1;
 
-	CanadaGoose = AddGooseToWorld(GoosePos);
+	CanadaGoose = AddGooseToWorld(myGoosePos);
 	RedApple = AddAppleToWorld(ApplePos);
 	ParkKeeper = AddParkKeeperToWorld(PKPos);
-	AddCharacterToWorld(Vector3(45, 50, 0));
-
+	enemy = AddCharacterToWorld(Vector3(45, 0, 0));
 	AddFloorToWorld(Vector3(-55, -9, 0));
 	AddFloorToWorld(Vector3(55, -9, 0));
 	AddWaterToWorld(Vector3(0, -9, 0));
-	AddIslandToWorld(Vector3(0, 0, -85));
+	AddIslandToWorld(myIslandPos, "myisland");
 	AddMapToWorld();
-	GameManual();
+	AddGameManual();
+
+
+	previous = CanadaGoose;
+	constraint = new PositionConstraint(previous, nullptr, 3);
+
+	if (DoubleMod)
+	{
+		AddIslandToWorld(yourIslandPos, "yourisland");
+		EnemyGoose = AddGooseToWorld(myGoosePos);
+	}
 }
 
 //From here on it's functions to add in objects to the world!
@@ -382,22 +423,34 @@ void TutorialGame::AddMapToWorld() {
 	{
 		if ((grid->GetAllnodes())[i].type == 'x')
 		{
-			CubePos = Vector3((grid->GetAllnodes())[i].position.x-95, 0, (grid->GetAllnodes())[i].position.z-95);
+			CubePos = Vector3((grid->GetAllnodes())[i].position.x-95, -3, (grid->GetAllnodes())[i].position.z-95);
 			AddCubeToWorld(CubePos, cubeDims,"realwall",0);
 		}
 		
 	}
 	
-	//AddCubeToWorld(CubePos, cubeDims, "airwall", 0);
-	//AddCubeToWorld(CubePos, cubeDims, "stair", 0);
-	
 }
 
-GameObject* TutorialGame::AddIslandToWorld(const Vector3& position) {
+GameObject* TutorialGame::AddIslandToWorld(const Vector3& position, string IslandName) {
 	Vector3 islandDims = Vector3(3, 1, 3);
 
-	GameObject* Island = new GameObject("island");
-	AddCubeToWorld(position, islandDims, "island",0);
+	GameObject* Island = new GameObject(IslandName);
+	AABBVolume* volume = new AABBVolume(islandDims);
+	Island->SetBoundingVolume((CollisionVolume*)volume);
+	Island->GetTransform().SetWorldScale(islandDims);
+	Island->GetTransform().SetWorldPosition(position);
+
+	Island->SetRenderObject(new RenderObject(&Island->GetTransform(), cubeMesh, nullptr, basicShader));
+	Island->SetPhysicsObject(new PhysicsObject(&Island->GetTransform(), Island->GetBoundingVolume()));
+
+	Island->GetPhysicsObject()->SetInverseMass(0);
+	Island->GetPhysicsObject()->InitCubeInertia();
+
+	world->AddGameObject(Island);
+	Island->GetRenderObject()->SetColour(Vector4(1, 1, 0, 1));
+
+
+
 
 
 	return Island;
@@ -419,6 +472,7 @@ GameObject* TutorialGame::AddFloorToWorld(const Vector3& position) {
 	floor->GetPhysicsObject()->InitCubeInertia();
 
 	world->AddGameObject(floor);
+	floor->GetRenderObject()->SetColour(Vector4(0, 0.8, 0, 1));
 
 	return floor;
 }
@@ -519,26 +573,25 @@ GameObject* TutorialGame::AddGooseToWorld(const Vector3& position)
 }
 
 void TutorialGame::CanadaGooseMove() {
-	if (useGoose) {
 
-		Ray GooseRay(CanadaGoose->GetTransform().GetWorldPosition(), (CanadaGoose->GetTransform().GetLocalOrientation() * Vector3(0, 0, 1)).Normalised());
-		Debug::DrawLine(GooseRay.GetPosition(), GooseRay.GetPosition() + GooseRay.GetDirection() * 1000.0f, Vector4(1, 1, 0, 1));
+		GooseRay = new Ray(CanadaGoose->GetTransform().GetWorldPosition(), (CanadaGoose->GetTransform().GetLocalOrientation() * Vector3(0, 0, 1)).Normalised());
+		Debug::DrawLine(GooseRay->GetPosition(), GooseRay->GetPosition() + GooseRay->GetDirection() * 1000.0f, Vector4(1, 1, 0, 1));
 
-		lockedObject = CanadaGoose;
+
 		if (Window::GetKeyboard()->KeyDown(KeyboardKeys::U)) {
-			CanadaGoose->GetPhysicsObject()->AddForce(GooseRay.GetDirection() * 100.0f);
+			CanadaGoose->GetPhysicsObject()->AddForce(GooseRay->GetDirection() * 50.0f);
 		}
 
 		if (Window::GetKeyboard()->KeyDown(KeyboardKeys::J)) {
-			CanadaGoose->GetPhysicsObject()->AddForce(-GooseRay.GetDirection() * 100.0f);
+			CanadaGoose->GetPhysicsObject()->AddForce(-GooseRay->GetDirection() * 50.0f);
 		}
 
 		if (Window::GetKeyboard()->KeyDown(KeyboardKeys::K)) {
-			CanadaGoose->GetPhysicsObject()->AddTorque(Vector3(0, -5, 0));
+			CanadaGoose->GetPhysicsObject()->AddTorque(Vector3(0, -3, 0));
 		}
 
 		if (Window::GetKeyboard()->KeyDown(KeyboardKeys::H)) {
-			CanadaGoose->GetPhysicsObject()->AddTorque(Vector3(0, 5, 0));
+			CanadaGoose->GetPhysicsObject()->AddTorque(Vector3(0, 3, 0));
 		}
 		
 		if (Window::GetKeyboard()->KeyDown(KeyboardKeys::SPACE)) {
@@ -546,7 +599,9 @@ void TutorialGame::CanadaGooseMove() {
 		}
 
 		AppleDetection();
-	}
+
+		WaterDetection();
+	
 }
 
 GameObject* TutorialGame::AddParkKeeperToWorld(const Vector3& position)
@@ -577,36 +632,84 @@ GameObject* TutorialGame::AddParkKeeperToWorld(const Vector3& position)
 
 void TutorialGame::ParkKeeperMachine() {
 
-	PKmachine = new StateMachine();
+	PKMachine = new StateMachine();
 	//干什么
 	StateFunc AFunc = &ParkKpeeperMove;
 	StateFunc BFunc = &ParkKpeeperDetection;
+	StateFunc CFunc = &ParkKpeeperBack;
+	StateFunc DFunc = &ParkKpeeperTouch;
 
 	GenericState* stateA = new GenericState(AFunc, (void*)&PKflag);
 	GenericState* stateB = new GenericState(BFunc, (void*)&PKflag);
-	PKmachine->AddState(stateA);
-	PKmachine->AddState(stateB);
+	GenericState* stateC = new GenericState(CFunc, (void*)&PKflag);
+	GenericState* stateD = new GenericState(DFunc, (void*)&PKflag);
+	PKMachine->AddState(stateA);
+	PKMachine->AddState(stateB);
+	PKMachine->AddState(stateC);
+	PKMachine->AddState(stateD);
 
 	//转换条件
 	GenericTransition <int&, int >* transitionA =
 		new GenericTransition <int&, int >(
-			GenericTransition <int&, int >::GreaterThanTransition,
-			PKflag, 1, stateA, stateB); // if greater than 1, A to B
+			GenericTransition <int&, int >::EqualsTransition,
+			PKflag, 0, stateB, stateA); // if greater than 1, A to B
 
 	GenericTransition <int&, int >* transitionB =
 		new GenericTransition <int&, int >(
 			GenericTransition <int&, int >::EqualsTransition,
-			PKflag, 0, stateB, stateA); // if equals 0, B to A
+			PKflag, 1, stateA, stateD); // if equals 0, B to A
 
-	PKmachine->AddTransition(transitionA);
-	PKmachine->AddTransition(transitionB);
+	GenericTransition <int&, int >* transitionC =
+		new GenericTransition <int&, int >(
+			GenericTransition <int&, int >::EqualsTransition,
+			PKflag, 2, stateA, stateC); // if equals 0, B to A
+
+	GenericTransition <int&, int >* transitionD =
+		new GenericTransition <int&, int >(
+			GenericTransition <int&, int >::EqualsTransition,
+			PKflag, 3, stateD, stateC); // if equals 0, B to A
+
+	GenericTransition <int&, int >* transitionE =
+		new GenericTransition <int&, int >(
+			GenericTransition <int&, int >::EqualsTransition,
+			PKflag, 4, stateC, stateB); // if equals 0, B to A
+
+	PKMachine->AddTransition(transitionA);
+	PKMachine->AddTransition(transitionB);
+	PKMachine->AddTransition(transitionC);
+	PKMachine->AddTransition(transitionD);
+	PKMachine->AddTransition(transitionE);
+
+	PKMachine->SetActiveState(stateB);
+}
+
+void TutorialGame::ParkKpeeperTouch(void*) {
+	if (false) //鹅有苹果
+	{
+		This_TutorialGame->RedApple->GetTransform().SetWorldPosition(This_TutorialGame->ApplePos);
+		This_TutorialGame->PKflag = 3;
+	}
+
+
+}
+
+void TutorialGame::ParkKpeeperBack(void*) {
+	This_TutorialGame->ParkKeeper->GetTransform().SetWorldPosition(This_TutorialGame->PKPos);
+	This_TutorialGame->PKflag = 4;
 
 }
 
 void TutorialGame::ParkKpeeperMove(void*) {
 	NavigationPath outPath;
-	Vector3 startPos(10, 0, 10);
-	Vector3 endPos(30, 0, 10);
+	Vector3 startPos = This_TutorialGame->ParkKeeper->GetTransform().GetWorldPosition(); 
+	
+	startPos.x += 100;
+	startPos.y = 0;
+	startPos.z += 100;
+	Vector3 endPos = This_TutorialGame->CanadaGoose->GetTransform().GetWorldPosition();
+	endPos.x += 100;
+	endPos.y = 0;
+	endPos.z += 100;
 	//PKpos This_TutorialGame->PKPos goosepos This_TutorialGame->GoosePos Vector3(0, 0, -85)
 
 	This_TutorialGame->testNodes.clear();
@@ -626,39 +729,37 @@ void TutorialGame::ParkKpeeperMove(void*) {
 	for (int i = 1; i < This_TutorialGame->testNodes.size(); ++i) {
 		Vector3 a = This_TutorialGame->testNodes[i - 1];
 		Vector3 b = This_TutorialGame->testNodes[i];
-		Debug::DrawLine(a, b, Vector4(0, 1, 0, 1));
+		Debug::DrawLine(a, b, Vector4(1, 0, 0, 1));
 	}
 
-	Vector3 ParkKeeperPos = startPos;
-	//for (int i = 0; i < This_TutorialGame->testNodes.size() -1; i++)
-	//{
-	//	for (int j = 0; j < 101; j++)
-	//	{
-	//		//ParkKeeperPos = (This_TutorialGame->grid->GetAllnodes())[i].position + ( (This_TutorialGame->grid->GetAllnodes())[i+1].position - (This_TutorialGame->grid->GetAllnodes())[i].position ) / 2 *j;
 
-	//		ParkKeeperPos = (This_TutorialGame->testNodes)[i] + ( (This_TutorialGame->testNodes)[i+1] - (This_TutorialGame->testNodes)[i] ) / 100 *j;
+	for (int i = 1; i < This_TutorialGame->testNodes.size() ; i++)
+	{
+		Vector3 a = This_TutorialGame->testNodes[i];
 
-	//		
+			This_TutorialGame->ParkKeeper->GetPhysicsObject()->AddForce((a - This_TutorialGame->ParkKeeper->GetTransform().GetWorldPosition()) * 0.5f);
+			//std::cout << a << std::endl;
+		
+		
+	}
 
-	//		This_TutorialGame->ParkKeeper->GetTransform().SetWorldPosition(ParkKeeperPos);
-	//	}
-	//	
-	//}
-	This_TutorialGame->ParkKeeper->GetTransform().SetWorldPosition(ParkKeeperPos);
-	//std::cout << This_TutorialGame->ParkKeeper->GetTransform().GetWorldPosition();
+	if (This_TutorialGame->physics->apple_island_detection == true)
+	{
+		This_TutorialGame->score += 10;
+		This_TutorialGame->physics->apple_island_detection = false;
+		This_TutorialGame->PKflag = 1;
+	}
+
 }
 
 void TutorialGame::ParkKpeeperDetection(void* ) {
-	Ray PKRay(This_TutorialGame->ParkKeeper->GetTransform().GetWorldPosition(), (This_TutorialGame->ParkKeeper->GetTransform().GetLocalOrientation() * Vector3(0, 0, 1)).Normalised());
-	Debug::DrawLine(PKRay.GetPosition(), PKRay.GetPosition() + PKRay.GetDirection() * 1000.0f, Vector4(1, 0, 0, 1));
-
-	RayCollision closestCollision;
-
-	if (This_TutorialGame->world->Raycast(PKRay, closestCollision, true)) {
-		if (This_TutorialGame->CanadaGoose == (GameObject*)closestCollision.node) {
-			This_TutorialGame->PKflag = 10;
+	Vector3 PGRANGE = This_TutorialGame->ParkKeeper->GetTransform().GetWorldPosition() - This_TutorialGame->CanadaGoose->GetTransform().GetWorldPosition();
+	This_TutorialGame->parkkeeper_goose_range = PGRANGE.x * PGRANGE.x + PGRANGE.z * PGRANGE.z;
+	
+		if (This_TutorialGame->parkkeeper_goose_range < 1000) {
+			This_TutorialGame->PKflag = 0;
 		}
-	}
+	
 }
 
 GameObject* TutorialGame::AddCharacterToWorld(const Vector3& position) {
@@ -697,6 +798,52 @@ GameObject* TutorialGame::AddCharacterToWorld(const Vector3& position) {
 	return character;
 }
 
+void TutorialGame::enemyMove() {
+
+	NavigationPath outPath;
+	Vector3 startPos = CanadaGoose->GetTransform().GetWorldPosition();
+	startPos.x += 100;
+	startPos.y = 0;
+	startPos.z += 100;
+	Vector3 endPos = enemy->GetTransform().GetWorldPosition();
+	endPos.x += 100;
+	endPos.y = 0;
+	endPos.z += 100;
+	//PKpos This_TutorialGame->PKPos goosepos This_TutorialGame->GoosePos Vector3(0, 0, -85)
+
+	This_TutorialGame->enemyNodes.clear();
+
+	bool found = This_TutorialGame->grid->FindPath(startPos, endPos, outPath);
+
+	Vector3 pos;
+	while (outPath.PopWaypoint(pos)) {
+		pos.x -= 95;
+		pos.z -= 95;
+
+		This_TutorialGame->enemyNodes.push_back(pos);
+
+		//std::cout << pos << std::endl;
+	}
+
+	for (int i = 1; i < This_TutorialGame->enemyNodes.size(); ++i) {
+		Vector3 a = This_TutorialGame->enemyNodes[i - 1];
+		Vector3 b = This_TutorialGame->enemyNodes[i];
+		Debug::DrawLine(a, b, Vector4(1, 0, 0, 1));
+	}
+
+
+	for (int i = 1; i < This_TutorialGame->enemyNodes.size(); i++)
+	{
+		Vector3 a = This_TutorialGame->enemyNodes[i];
+
+		enemy->GetPhysicsObject()->AddForce((a - enemy->GetTransform().GetWorldPosition()) * 0.5f);
+		//std::cout << a << std::endl;
+
+
+	}
+
+}
+
 GameObject* TutorialGame::AddAppleToWorld(const Vector3& position) {
 	GameObject* apple = new GameObject("apple");
 
@@ -718,12 +865,25 @@ GameObject* TutorialGame::AddAppleToWorld(const Vector3& position) {
 }
 
 void TutorialGame::AppleDetection() {
+
+
+
 	if (physics->apple_goose_detection == true) {
-		Vector3 CGoosePos = CanadaGoose->GetTransform().GetWorldPosition();
-		CGoosePos.y += 1;
-		RedApple->GetTransform().SetWorldPosition(CGoosePos);
+		AddGooseConstraint(RedApple);
+		physics->apple_goose_detection = false;
 
 	}
+
+}
+
+void TutorialGame::WaterDetection() {
+	if (physics->goose_water_detection == true) {
+		if (Window::GetKeyboard()->KeyDown(KeyboardKeys::I)) {
+			CanadaGoose->GetPhysicsObject()->AddForce(GooseRay->GetDirection() * 1000.0f);
+		}
+
+	}
+
 
 }
 
@@ -766,31 +926,14 @@ void TutorialGame::InitCubeGridWorld(int numRows, int numCols, float rowSpacing,
 	AddFloorToWorld(Vector3(0, -2, 0));
 }
 
-void TutorialGame::BridgeConstraintTest() {
-	Vector3 cubeSize = Vector3(8, 8, 8);
 
-	float	invCubeMass = 5;
-	int		numLinks	= 25;
-	float	maxDistance	= 30;
-	float	cubeDistance = 20;
-
-	Vector3 startPos = Vector3(500, 1000, 500);
-
-	GameObject* start = AddCubeToWorld(startPos + Vector3(0, 0, 0), cubeSize, 0);
-
-	GameObject* end = AddCubeToWorld(startPos + Vector3((numLinks + 2) * cubeDistance, 0, 0), cubeSize, 0);
-
-	GameObject* previous = start;
-
-	for (int i = 0; i < numLinks; ++i) {
-		GameObject* block = AddCubeToWorld(startPos + Vector3((i + 1) * cubeDistance, 0, 0), cubeSize,"", invCubeMass);
-		PositionConstraint* constraint = new PositionConstraint(previous, block, maxDistance);
-		world->AddConstraint(constraint);
-		previous = block;
-	}
-
-	PositionConstraint* constraint = new PositionConstraint(previous, end, maxDistance);
+void TutorialGame::AddGooseConstraint(GameObject* FollowingObject) {
+	float    maxDistance = 3;
+	FollowingObject->GetTransform().SetWorldPosition(CanadaGoose->GetTransform().GetWorldPosition() + Vector3(0, 10, 0));
+	constraint = new PositionConstraint(previous, FollowingObject, maxDistance);
 	world->AddConstraint(constraint);
+	previous = FollowingObject;
+
 }
 
 void TutorialGame::SimpleGJKTest() {
@@ -808,11 +951,178 @@ void TutorialGame::SimpleGJKTest() {
 
 }
 
-void TutorialGame::GameManual() {
+void TutorialGame::AddGameManual() {
 	ManualCube=AddCubeToWorld(Vector3(-300, 0, -300), Vector3(100, 1, 100), "manual", 0.0f);
-
+	ManualCube->GetRenderObject()->SetDefaultTexture(manualTex);
 	//按钮
-	AddCubeToWorld(Vector3(-300, 10, -320), Vector3(20, 0.1, 10), "manual", 0.0f);
-	AddCubeToWorld(Vector3(-300, 10, -290), Vector3(20, 0.1, 10), "manual", 0.0f);
+	ButtonSingle = AddCubeToWorld(Vector3(-300, 10, -315), Vector3(10, 0.1, 5), "single", 0.0f);
+	ButtonDouble = AddCubeToWorld(Vector3(-300, 10, -285), Vector3(10, 0.1, 5), "double", 0.0f);
+	ButtonReplay = AddCubeToWorld(Vector3(-300, -10, -315), Vector3(10, 0.1, 5), "replay", 0.0f);
+	ButtonExit = AddCubeToWorld(Vector3(-300, -10, -285), Vector3(10, 0.1, 5), "exit", 0.0f);
+
+	ButtonReplay->GetRenderObject()->SetDefaultTexture(startTex);
+	ButtonExit->GetRenderObject()->SetDefaultTexture(quitTex);
+	ButtonSingle->GetRenderObject()->SetDefaultTexture(singleTex);
+	ButtonDouble->GetRenderObject()->SetDefaultTexture(doubleTex);
+
+	ButtonSingle->GetRenderObject()->SetColour(Vector4(1, 0, 0, 1));
+	ButtonReplay->GetRenderObject()->SetColour(Vector4(1, 0, 0, 1));
+	ButtonDouble->GetRenderObject()->SetColour(Vector4(0, 0, 1, 1));
+	ButtonExit->GetRenderObject()->SetColour(Vector4(0, 0, 1, 1));
+
+	ManualMachine();
 }
 
+
+
+void TutorialGame::ManualMachine() {
+
+	UIMachine = new StateMachine();
+	//干什么
+	StateFunc AFunc = &SinglePlayer;
+	StateFunc BFunc = &DoublePlayer;
+	StateFunc CFunc = &ManualSelect;
+	StateFunc DFunc = &ExitSelect;
+
+
+
+	GenericState* stateA = new GenericState(AFunc, (void*)&Manualflag);
+	GenericState* stateB = new GenericState(BFunc, (void*)&Manualflag);
+	GenericState* stateC = new GenericState(CFunc, (void*)&Manualflag);
+	GenericState* stateD = new GenericState(DFunc, (void*)&Manualflag);
+
+	UIMachine->AddState(stateA);
+	UIMachine->AddState(stateB);
+	UIMachine->AddState(stateC);
+	UIMachine->AddState(stateD);
+
+	//转换条件
+	GenericTransition <int&, int >* transitionA =
+		new GenericTransition <int&, int >(
+			GenericTransition <int&, int >::EqualsTransition,
+			Manualflag, 0, stateC, stateA); // , manual to single 
+
+	GenericTransition <int&, int >* transitionB =
+		new GenericTransition <int&, int >(
+			GenericTransition <int&, int >::EqualsTransition,
+			Manualflag, 1, stateA, stateC); // if equals 0, single to manual
+	
+	GenericTransition <int&, int >* transitionC =
+		new GenericTransition <int&, int >(
+			GenericTransition <int&, int >::EqualsTransition,
+			Manualflag, 2, stateA, stateD); // if equals 0, single to exit
+	
+	GenericTransition <int&, int >* transitionD =
+		new GenericTransition <int&, int >(
+			GenericTransition <int&, int >::EqualsTransition,
+			Manualflag, 3, stateD, stateA); // if equals 0, exit to single
+
+	GenericTransition <int&, int >* transitionE =
+		new GenericTransition <int&, int >(
+			GenericTransition <int&, int >::EqualsTransition,
+			Manualflag, 4, stateC, stateB); // if equals 0, manual to double
+
+	UIMachine->AddTransition(transitionA);
+	UIMachine->AddTransition(transitionB);
+	UIMachine->AddTransition(transitionC);
+	UIMachine->AddTransition(transitionD);
+	UIMachine->AddTransition(transitionE);
+
+	UIMachine->SetActiveState(stateC);
+}
+
+//cfunc
+void TutorialGame::ManualSelect(void*) {
+	This_TutorialGame->lockedObject = This_TutorialGame->ManualCube;
+	Window::GetWindow()->ShowOSPointer(true);
+	Window::GetWindow()->LockMouseToWindow(false);
+
+	GameObject* ManualSelectionObject;
+	if (Window::GetMouse()->ButtonDown(NCL::MouseButtons::LEFT)) {
+		Ray ray = CollisionDetection::BuildRayFromMouse(*This_TutorialGame->world->GetMainCamera());
+
+		RayCollision closestCollision;
+
+		if (This_TutorialGame->world->Raycast(ray, closestCollision, true)) {
+			ManualSelectionObject = (GameObject*)closestCollision.node;
+			if (ManualSelectionObject == This_TutorialGame->ButtonSingle)
+			{
+				//This_TutorialGame->InitWorld();
+				This_TutorialGame->lockedObject = This_TutorialGame->CanadaGoose;
+				This_TutorialGame->Manualflag = 0;
+			}
+		
+			if (ManualSelectionObject == This_TutorialGame->ButtonDouble)
+			{
+				This_TutorialGame->Manualflag = 4;
+			}
+		}
+	}
+
+
+}
+
+//afunc
+void TutorialGame::SinglePlayer(void*) {
+
+	if (Window::GetKeyboard()->KeyDown(KeyboardKeys::ESCAPE))
+	{
+		This_TutorialGame->Manualflag = 1;
+	}
+	This_TutorialGame->SingleplayTimer += This_TutorialGame->TimerDT;
+	
+	if (This_TutorialGame->SingleplayTimer > 180 )
+	{
+		This_TutorialGame->Manualflag = 2;
+
+	}
+
+	//if (false)
+	//{
+	//	This_TutorialGame->Manualflag = 2;
+	//}
+}
+
+void TutorialGame::DoublePlayer(void*) {
+	This_TutorialGame->DoubleMod = true;
+	This_TutorialGame->InitWorld();
+	This_TutorialGame->lockedObject = This_TutorialGame->CanadaGoose;
+
+
+
+}
+
+void TutorialGame::ExitSelect(void*) {
+	This_TutorialGame->lockedObject = This_TutorialGame->ManualCube;
+	Window::GetWindow()->ShowOSPointer(true);
+	Window::GetWindow()->LockMouseToWindow(false);
+
+	This_TutorialGame->ButtonReplay->GetTransform().SetWorldPosition(Vector3(-300, 10, -315));
+	This_TutorialGame->ButtonExit->GetTransform().SetWorldPosition(Vector3(-300, 10, -285));
+
+	Debug::Print("score is " + This_TutorialGame->score, Vector2(10, 80));
+
+	GameObject* ManualSelectionObject;
+	if (Window::GetMouse()->ButtonDown(NCL::MouseButtons::LEFT)) {
+		Ray ray = CollisionDetection::BuildRayFromMouse(*This_TutorialGame->world->GetMainCamera());
+
+		RayCollision closestCollision;
+
+		if (This_TutorialGame->world->Raycast(ray, closestCollision, true)) {
+			ManualSelectionObject = (GameObject*)closestCollision.node;
+			if (ManualSelectionObject == This_TutorialGame->ButtonReplay)
+			{
+				
+				This_TutorialGame->ButtonReplay->GetTransform().SetWorldPosition(Vector3(-300, -10, -315));
+				This_TutorialGame->ButtonExit->GetTransform().SetWorldPosition(Vector3(-300, -10, -285));
+				This_TutorialGame->Manualflag = 3;
+			}
+
+			if (ManualSelectionObject == This_TutorialGame->ButtonExit)
+			{
+				exit(0);
+			}
+		}
+	}
+
+}

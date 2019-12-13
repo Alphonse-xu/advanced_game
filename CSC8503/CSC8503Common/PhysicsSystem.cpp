@@ -187,6 +187,14 @@ void PhysicsSystem::BasicCollisionDetection() {
 				 {
 					 goose_water_detection = true;
 				 }
+
+
+				 if ((*i)->GetName() == "apple" && (*j)->GetName() == "myisland")
+				 {
+					 apple_island_detection = true;
+				 }
+
+
 				info.framesLeft = numCollisionFrames;
 				allCollisions.insert(info);
 				

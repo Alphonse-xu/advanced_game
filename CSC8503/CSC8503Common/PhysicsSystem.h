@@ -25,6 +25,7 @@ namespace NCL {
 
 			bool goose_water_detection = false;
 			bool apple_goose_detection = false;
+			bool apple_island_detection = false;
 
 		protected:
 			void BasicCollisionDetection();
